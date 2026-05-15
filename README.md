@@ -1,6 +1,14 @@
 # auto-bspwm
 > This is a Bash script that automates the setup of a professional hacking environment for Kali Linux using the tiled window manager [bspwm](https://github.com/baskerville/bspwm).
 
+## Requirements
+- **Distribution**: Kali Linux rolling (tested) — should work on any recent Debian-based distro where `apt` provides `bspwm`, `sxhkd`, `polybar` and `picom` packages.
+- A non-root user with `sudo` privileges. **Do not run the script as root.**
+- An active internet connection (for `apt` and `oh-my-zsh`/`powerlevel10k` downloads).
+- ~1.5 GB of free disk space for packages, fonts and themes.
+
+The script is **idempotent** — re-running it after a partial failure picks up where it left off without wiping previous progress.
+
 ## Installation
 1. Install available updates.
 
@@ -29,6 +37,12 @@ chmod +x setup.sh
 ```
 
 5. After the script has finished, you will be prompted to restart the system. Once you have rebooted, select `bspwm` as the window manager and then log in.
+
+## Troubleshooting
+- **`wal: command not found` after install** — pywal16 is installed via `pipx`. Make sure `~/.local/bin` is in your `PATH` (the installer runs `pipx ensurepath`, but you may need a fresh shell).
+- **Polybar shows the wrong/missing icons** — the bar requires Nerd Fonts. Re-run `fc-cache -fv` and restart polybar via `~/.config/polybar/launch.sh --shapes`.
+- **Picom crashes with GLX errors inside a VM without 3D acceleration** — edit `~/.config/picom/picom.conf` and change `backend = "glx"` back to `backend = "xrender"`.
+- **`firefox-esr` / `burpsuite` not found** — these are marked optional in `setup.sh`; if your distro doesn't ship them, install your preferred alternative manually.
 
 ## Overview of the environment
 ![overview1](/assets/overview1.png "overview1")
@@ -92,12 +106,14 @@ This configuration uses the following software:
 - **Shell configuration manager**: [ohmyzsh](https://github.com/ohmyzsh/ohmyzsh)
 - **Bars**: [polybar](https://github.com/polybar/polybar)
 - **Bars Theme**: [polybar-themes](https://github.com/adi1090x/polybar-themes)
-- **Compositor**: [picom](https://github.com/yshui/picom)
+- **Compositor**: [picom (yshui)](https://github.com/yshui/picom)
+- **Color generator**: [pywal16](https://github.com/eylles/pywal16) (maintained fork of dylanaraps/pywal)
+- **System info**: [fastfetch](https://github.com/fastfetch-cli/fastfetch)
 - **File Manager**: [thunar](https://docs.xfce.org/xfce/thunar/start)
 - **Fonts**: [iosevka](https://github.com/ryanoasis/nerd-fonts/tree/master/patched-fonts/Iosevka) and [hack](https://github.com/ryanoasis/nerd-fonts/tree/master/patched-fonts/Hack)
 - **Application Launcher**: [rofi](https://github.com/davatorium/rofi)
 - **Browsers**: [firefox](https://www.mozilla.org/en-US/firefox/new/)
-- **Terminals**: [kitty](https://sw.kovidgoyal.net/kitty/) and [qterminal](https://github.com/lxqt/qterminal)
+- **Terminal**: [kitty](https://sw.kovidgoyal.net/kitty/)
 - **Static Wallpaper**: [feh](https://github.com/derf/feh)
 - **Screenshot**: [flameshot](https://flameshot.org/)
 

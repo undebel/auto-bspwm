@@ -1,281 +1,328 @@
-#!/usr/bin/bash
-
+#!/usr/bin/env bash
+# auto-bspwm — automated bspwm environment for Kali Linux
 # Author: Juan Rivas (aka @r1vs3c)
 
-# Colours
-greenColour="\e[0;32m\033[1m"
-endColour="\033[0m\e[0m"
-redColour="\e[0;31m\033[1m"
-blueColour="\e[0;34m\033[1m"
-yellowColour="\e[0;33m\033[1m"
-purpleColour="\e[0;35m\033[1m"
-turquoiseColour="\e[0;36m\033[1m"
-grayColour="\e[0;37m\033[1m"
+set -euo pipefail
 
-# Global variables
-dir=$(pwd)
-fdir="$HOME/.local/share/fonts"
-user=$(whoami)
+# ============================================================
+# Constants & colors
+# ============================================================
+readonly SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+readonly FONT_DIR="${HOME}/.local/share/fonts"
+readonly WALLPAPER_DIR="${HOME}/Wallpapers"
+readonly POLYBAR_DIR="${HOME}/.config/polybar"
 
-trap ctrl_c INT
+readonly GREEN="\e[0;32m\033[1m"
+readonly RED="\e[0;31m\033[1m"
+readonly BLUE="\e[0;34m\033[1m"
+readonly YELLOW="\e[0;33m\033[1m"
+readonly PURPLE="\e[0;35m\033[1m"
+readonly TURQUOISE="\e[0;36m\033[1m"
+readonly GRAY="\e[0;37m\033[1m"
+readonly RESET="\033[0m\e[0m"
 
-function ctrl_c(){
-	echo -e "\n\n${redColour}[!] Exiting...\n${endColour}"
-	exit 1
+# ============================================================
+# Logging helpers
+# ============================================================
+info()    { echo -e "\n${BLUE}[*]${RESET} $*"; }
+success() { echo -e "\n${GREEN}[+]${RESET} $*"; }
+warn()    { echo -e "\n${YELLOW}[!]${RESET} $*"; }
+error()   { echo -e "\n${RED}[-]${RESET} $*" >&2; }
+step()    { echo -e "\n${PURPLE}[*]${RESET} $*"; }
+
+# ============================================================
+# Signal & error handling
+# ============================================================
+trap on_interrupt INT
+trap 'on_error $LINENO' ERR
+
+on_interrupt() {
+	error "Exiting (Ctrl+C)..."
+	exit 130
 }
 
-function banner(){
-	echo -e "\n${turquoiseColour}              _____            ______"
+on_error() {
+	local exit_code=$?
+	error "Script failed at line $1 (exit code ${exit_code})"
+	exit "${exit_code}"
+}
+
+# ============================================================
+# Banner
+# ============================================================
+banner() {
+	echo -e "\n${TURQUOISE}              _____            ______"
 	sleep 0.05
 	echo -e "______ ____  ___  /______      ___  /___________________      ________ ___"
 	sleep 0.05
-	echo -e "_  __ \`/  / / /  __/  __ \     __  __ \_  ___/__  __ \_ | /| / /_  __ \`__ \\"
+	echo -e "_  __ \`/  / / /  __/  __ \\     __  __ \\_  ___/__  __ \\_ | /| / /_  __ \`__ \\"
 	sleep 0.05
 	echo -e "/ /_/ // /_/ // /_ / /_/ /     _  /_/ /(__  )__  /_/ /_ |/ |/ /_  / / / / /"
 	sleep 0.05
-	echo -e "\__,_/ \__,_/ \__/ \____/      /_.___//____/ _  .___/____/|__/ /_/ /_/ /_/    ${endColour}${yellowColour}(${endColour}${grayColour}By ${endColour}${purpleColour}@r1vs3c${endColour}${yellowColour})${endColour}${turquoiseColour}"
+	echo -e "\\__,_/ \\__,_/ \\__/ \\____/      /_.___//____/ _  .___/____/|__/ /_/ /_/ /_/    ${RESET}${YELLOW}(${RESET}${GRAY}By ${RESET}${PURPLE}@r1vs3c${RESET}${YELLOW})${RESET}${TURQUOISE}"
 	sleep 0.05
-    	echo -e "                                             /_/${endColour}"
+	echo -e "                                             /_/${RESET}"
 }
 
-if [ "$user" == "root" ]; then
-	banner
-	echo -e "\n\n${redColour}[!] You should not run the script as the root user!\n${endColour}"
-    	exit 1
-else
-	banner
-	sleep 1
-	echo -e "\n\n${blueColour}[*] Installing necessary packages for the environment...\n${endColour}"
-	sleep 2
-	sudo apt install -y kitty rofi feh xclip ranger i3lock-fancy scrot scrub wmname imagemagick cmatrix htop fastfetch python3-pip procps tty-clock fzf lsd bat pamixer flameshot
-	if [ $? != 0 ] && [ $? != 130 ]; then
-		echo -e "\n${redColour}[-] Failed to install some packages!\n${endColour}"
+# ============================================================
+# Preflight checks
+# ============================================================
+preflight() {
+	if [[ "${EUID}" -eq 0 ]]; then
+		error "Do not run this script as root."
 		exit 1
-	else
-		echo -e "\n${greenColour}[+] Done\n${endColour}"
-		sleep 1.5
-	fi
- 
-	echo -e "\n${blueColour}[*] Starting installation of necessary dependencies for the environment...\n${endColour}"
-	sleep 0.5
-
-	echo -e "\n${purpleColour}[*] Installing necessary dependencies for bspwm...\n${endColour}"
-	sleep 2
-	sudo apt install -y build-essential git vim libxcb-util0-dev libxcb-ewmh-dev libxcb-randr0-dev libxcb-icccm4-dev libxcb-keysyms1-dev libxcb-xinerama0-dev libasound2-dev libxcb-xtest0-dev libxcb-shape0-dev libuv1-dev
-	if [ $? != 0 ] && [ $? != 130 ]; then
-		echo -e "\n${redColour}[-] Failed to install some dependencies for bspwm!\n${endColour}"
-		exit 1
-	else
-		echo -e "\n${greenColour}[+] Done\n${endColour}"
-		sleep 1.5
 	fi
 
-	echo -e "\n${purpleColour}[*] Installing necessary dependencies for polybar...\n${endColour}"
-	sleep 2
-	sudo apt install -y cmake cmake-data pkg-config python3-sphinx libcairo2-dev libxcb1-dev libxcb-util0-dev libxcb-randr0-dev libxcb-composite0-dev python3-xcbgen xcb-proto libxcb-image0-dev libxcb-ewmh-dev libxcb-icccm4-dev libxcb-xkb-dev libxcb-xrm-dev libxcb-cursor-dev libasound2-dev libpulse-dev libjsoncpp-dev libmpdclient-dev libcurl4-openssl-dev libnl-genl-3-dev
-	if [ $? != 0 ] && [ $? != 130 ]; then
-		echo -e "\n${redColour}[-] Failed to install some dependencies for polybar!\n${endColour}"
-		exit 1
-	else
-		echo -e "\n${greenColour}[+] Done\n${endColour}"
-		sleep 1.5
-	fi
-
-	echo -e "\n${purpleColour}[*] Installing necessary dependencies for picom...\n${endColour}"
-	sleep 2
-	sudo apt install -y meson libxext-dev libxcb1-dev libxcb-damage0-dev libxcb-xfixes0-dev libxcb-shape0-dev libxcb-render-util0-dev libxcb-render0-dev libxcb-randr0-dev libxcb-composite0-dev libxcb-image0-dev libxcb-present-dev libxcb-xinerama0-dev libpixman-1-dev libdbus-1-dev libconfig-dev libgl1-mesa-dev libpcre2-dev libpcre3-dev libevdev-dev uthash-dev libev-dev libx11-xcb-dev libxcb-glx0-dev
-	if [ $? != 0 ] && [ $? != 130 ]; then
-		echo -e "\n${redColour}[-] Failed to install some dependencies for picom!\n${endColour}"
-		exit 1
-	else
-		echo -e "\n${greenColour}[+] Done\n${endColour}"
-		sleep 1.5
-	fi
-
-	echo -e "\n${blueColour}[*] Starting installation of the tools...\n${endColour}"
-	sleep 0.5
-	mkdir ~/tools && cd ~/tools
-
-	echo -e "\n${purpleColour}[*] Installing bspwm...\n${endColour}"
-	sleep 2
-	git clone https://github.com/baskerville/bspwm.git
-	cd bspwm
-	make -j$(nproc)
-	sudo make install
-	if [ $? != 0 ] && [ $? != 130 ]; then
-		echo -e "\n${redColour}[-] Failed to install bspwm!\n${endColour}"
-		exit 1
-	else
-		sudo apt install bspwm -y
-		echo -e "\n${greenColour}[+] Done\n${endColour}"
-		sleep 1.5
-	fi
-	cd ..
-
-	echo -e "\n${purpleColour}[*] Installing sxhkd...\n${endColour}"
-	sleep 2
-	git clone https://github.com/baskerville/sxhkd.git
-	cd sxhkd
-	make -j$(nproc)
-	sudo make install
-	if [ $? != 0 ] && [ $? != 130 ]; then
-		echo -e "\n${redColour}[-] Failed to install sxhkd!\n${endColour}"
-		exit 1
-	else
-		echo -e "\n${greenColour}[+] Done\n${endColour}"
-		sleep 1.5
-	fi
-
-	cd ..
-
-	echo -e "\n${purpleColour}[*] Installing polybar...\n${endColour}"
-	sleep 2
-	git clone --recursive https://github.com/polybar/polybar
-	cd polybar
-	mkdir build
-	cd build
-	cmake ..
-	make -j$(nproc)
-	sudo make install
-	if [ $? != 0 ] && [ $? != 130 ]; then
-		echo -e "\n${redColour}[-] Failed to install polybar!\n${endColour}"
-		exit 1
-	else
-		echo -e "\n${greenColour}[+] Done\n${endColour}"
-		sleep 1.5
-	fi
-
-	cd ../../
-
-	echo -e "\n${purpleColour}[*] Installing picom...\n${endColour}"
-	sleep 2
-	git clone https://github.com/ibhagwan/picom.git
-	cd picom
-	git submodule update --init --recursive
-	meson --buildtype=release . build
-	ninja -C build
-	sudo ninja -C build install
-	if [ $? != 0 ] && [ $? != 130 ]; then
-		echo -e "\n${redColour}[-] Failed to install picom!\n${endColour}"
-		exit 1
-	else
-		echo -e "\n${greenColour}[+] Done\n${endColour}"
-		sleep 1.5
-	fi
-
-	cd ..
-
-	echo -e "\n${purpleColour}[*] Installing Oh My Zsh and Powerlevel10k for user $user...\n${endColour}"
-	sleep 2
-	sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
-	git clone --depth=1 https://github.com/romkatv/powerlevel10k.git ${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k
-	if [ $? != 0 ] && [ $? != 130 ]; then
-		echo -e "\n${redColour}[-] Failed to install Oh My Zsh and Powerlevel10k for user $user!\n${endColour}"
-		exit 1
-	else
-		echo -e "\n${greenColour}[+] Done\n${endColour}"
-		sleep 1.5
-	fi
-
-	echo -e "\n${purpleColour}[*] Installing Oh My Zsh and Powerlevel10k for user root...\n${endColour}"
-	sleep 2
-	sudo sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
-	sudo git clone --depth=1 https://github.com/romkatv/powerlevel10k.git /root/.oh-my-zsh/custom/themes/powerlevel10k
-	if [ $? != 0 ] && [ $? != 130 ]; then
-		echo -e "\n${redColour}[-] Failed to install Oh My Zsh and Powerlevel10k for user root!\n${endColour}"
-		exit 1
-	else
-		echo -e "\n${greenColour}[+] Done\n${endColour}"
-		sleep 1.5
-	fi
-
-	echo -e "\n${blueColour}[*] Starting configuration of fonts, wallpaper, configuration files, .zshrc, .p10k.zsh, and scripts...\n${endColour}"
-	sleep 0.5
-
-	echo -e "\n${purpleColour}[*] Configuring fonts...\n${endColour}"
-	sleep 2
-	if [[ -d "$fdir" ]]; then
-		cp -rv $dir/fonts/* $fdir
-	else
-		mkdir -p $fdir
-		cp -rv $dir/fonts/* $fdir
-	fi
-	echo -e "\n${greenColour}[+] Done\n${endColour}"
-	sleep 1.5
-
-	echo -e "\n${purpleColour}[*] Configuring wallpaper...\n${endColour}"
-	sleep 2
-	if [[ -d "~/Wallpapers" ]]; then
-		cp -rv $dir/wallpapers/* ~/Wallpapers
-	else
-		mkdir ~/Wallpapers
-		cp -rv $dir/wallpapers/* ~/Wallpapers
-	fi
-	wal -nqi ~/Wallpapers/archkali.png
-	sudo wal -nqi ~/Wallpapers/archkali.png
-	echo -e "\n${greenColour}[+] Done\n${endColour}"
-	sleep 1.5
-
-	echo -e "\n${purpleColour}[*] Configuring configuration files...\n${endColour}"
-	sleep 2
-	cp -rv $dir/config/* ~/.config/
-	echo -e "\n${greenColour}[+] Done\n${endColour}"
-	sleep 1.5
-
-	echo -e "\n${purpleColour}[*] Configuring the .zshrc and .p10k.zsh files...\n${endColour}"
-	sleep 2
-	cp -v $dir/.zshrc ~/.zshrc
-	sudo ln -sfv ~/.zshrc /root/.zshrc
-	cp -v $dir/.p10k.zsh ~/.p10k.zsh
-	sudo ln -sfv ~/.p10k.zsh /root/.p10k.zsh
-	echo -e "\n${greenColour}[+] Done\n${endColour}"
-	sleep 1.5
-
-	echo -e "\n${purpleColour}[*] Configuring scripts...\n${endColour}"
-	sleep 2
-	sudo cp -v $dir/scripts/whichSystem.py /usr/local/bin/
-	cp -rv $dir/scripts/*.sh ~/.config/polybar/shapes/scripts/
-	touch ~/.config/polybar/shapes/scripts/target
-	echo -e "\n${greenColour}[+] Done\n${endColour}"
-	sleep 1.5
-
-	echo -e "\n${purpleColour}[*] Configuring necessary permissions and symbolic links...\n${endColour}"
-	sleep 2
-	chmod -R +x ~/.config/bspwm/
-	chmod +x ~/.config/polybar/launch.sh
-	chmod +x ~/.config/polybar/shapes/scripts/*
-	sudo chmod +x /usr/local/bin/whichSystem.py
-	sudo chmod +x /usr/local/share/zsh/site-functions/_bspc
-	sudo chown root:root /usr/local/share/zsh/site-functions/_bspc
-	sudo mkdir -p /root/.config/polybar/shapes/scripts/
-	sudo touch /root/.config/polybar/shapes/scripts/target
-	sudo ln -sfv ~/.config/polybar/shapes/scripts/target /root/.config/polybar/shapes/scripts/target
-	cd ..
-	echo -e "\n${greenColour}[+] Done\n${endColour}"
-	sleep 1.5
-
-	echo -e "\n${purpleColour}[*] Removing repository and tools directory...\n${endColour}"
-	sleep 2
-	rm -rfv ~/tools
-	rm -rfv $dir
-	echo -e "\n${greenColour}[+] Done\n${endColour}"
-	sleep 1.5
-
-	echo -e "\n${greenColour}[+] Environment configured :D\n${endColour}"
-	sleep 1.5
-
-	while true; do
-		echo -en "\n${yellowColour}[?] It's necessary to restart the system. Do you want to restart the system now? ([y]/n) ${endColour}"
-		read -r
-		REPLY=${REPLY:-"y"}
-		if [[ $REPLY =~ ^[Yy]$ ]]; then
-			echo -e "\n\n${greenColour}[+] Restarting the system...\n${endColor}"
-			sleep 1
-			sudo reboot
-		elif [[ $REPLY =~ ^[Nn]$ ]]; then
-			exit 0
-		else
-			echo -e "\n${redColour}[!] Invalid response, please try again\n${endColour}"
+	for cmd in sudo apt curl git; do
+		if ! command -v "${cmd}" >/dev/null 2>&1; then
+			error "Required command not found: ${cmd}"
+			exit 1
 		fi
 	done
-fi
+
+	if [[ ! -f "${SCRIPT_DIR}/setup.sh" ]]; then
+		error "Cannot locate the project directory (SCRIPT_DIR=${SCRIPT_DIR})."
+		exit 1
+	fi
+}
+
+# ============================================================
+# Packages
+# ============================================================
+# Core packages — these must install successfully
+readonly APT_CORE=(
+	# Window manager / hotkey / compositor / bars
+	bspwm sxhkd picom polybar
+	# Terminals & shell
+	kitty zsh
+	# Launcher, file manager, wallpaper, locker, screenshot
+	rofi thunar feh i3lock-fancy scrot flameshot imagemagick
+	# System info / utilities
+	fastfetch htop tty-clock cmatrix
+	# Clipboard, audio, network
+	xclip pamixer iproute2
+	# CLI quality-of-life
+	ranger fzf lsd bat
+	# ZSH plugins (sourced by .zshrc)
+	zsh-syntax-highlighting zsh-autosuggestions
+	# Required by helper scripts / configs
+	procps wmname
+	# Python tooling for pywal16
+	python3-pip python3-venv pipx
+)
+
+# Optional packages — install if available, warn otherwise
+readonly APT_OPTIONAL=(
+	firefox-esr
+	burpsuite
+	scrub
+)
+
+install_packages() {
+	info "Updating apt cache..."
+	sudo apt update
+
+	info "Installing ${#APT_CORE[@]} core packages..."
+	sudo apt install -y "${APT_CORE[@]}"
+
+	info "Installing optional packages (failures are non-fatal)..."
+	for pkg in "${APT_OPTIONAL[@]}"; do
+		if ! sudo apt install -y "${pkg}"; then
+			warn "Optional package not available: ${pkg} (skipped)"
+		fi
+	done
+
+	install_pywal16
+}
+
+install_pywal16() {
+	if command -v wal >/dev/null 2>&1; then
+		info "pywal already installed: $(command -v wal)"
+		return 0
+	fi
+
+	step "Installing pywal16 (maintained fork of pywal)..."
+	# pipx is the modern way to install user-level CLI tools (PEP 668 friendly)
+	if command -v pipx >/dev/null 2>&1; then
+		pipx install pywal16 || pipx install --force pywal16
+		pipx ensurepath
+	else
+		# Fallback: pip3 with --break-system-packages if needed
+		pip3 install --user --break-system-packages pywal16 \
+			|| pip3 install --user pywal16
+	fi
+	export PATH="${HOME}/.local/bin:${PATH}"
+}
+
+# ============================================================
+# Fonts
+# ============================================================
+install_fonts() {
+	step "Installing fonts to ${FONT_DIR}..."
+	mkdir -p "${FONT_DIR}"
+	cp -rf "${SCRIPT_DIR}/fonts/"* "${FONT_DIR}/"
+	fc-cache -f "${FONT_DIR}" >/dev/null 2>&1 || true
+}
+
+# ============================================================
+# Oh My Zsh + Powerlevel10k (idempotent)
+# ============================================================
+install_omz_for_user() {
+	local home_dir=$1
+	local sudo_prefix=$2  # "" for current user, "sudo" for root
+
+	if [[ -d "${home_dir}/.oh-my-zsh" ]]; then
+		info "Oh My Zsh already present in ${home_dir}, skipping installer."
+	else
+		# --keep-zshrc prevents the installer from overwriting our config
+		${sudo_prefix} sh -c \
+			"$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" \
+			"" --unattended --keep-zshrc
+	fi
+
+	local p10k_dir="${home_dir}/.oh-my-zsh/custom/themes/powerlevel10k"
+	if [[ -d "${p10k_dir}" ]]; then
+		info "Powerlevel10k present in ${home_dir}, pulling latest..."
+		${sudo_prefix} git -C "${p10k_dir}" pull --depth=1 --quiet || true
+	else
+		${sudo_prefix} git clone --depth=1 \
+			https://github.com/romkatv/powerlevel10k.git "${p10k_dir}"
+	fi
+}
+
+install_zsh_setup() {
+	step "Installing Oh My Zsh & Powerlevel10k for $(whoami)..."
+	install_omz_for_user "${HOME}" ""
+
+	step "Installing Oh My Zsh & Powerlevel10k for root..."
+	install_omz_for_user "/root" "sudo"
+}
+
+# ============================================================
+# Wallpapers + pywal color extraction
+# ============================================================
+configure_wallpaper() {
+	step "Configuring wallpapers..."
+	mkdir -p "${WALLPAPER_DIR}"
+	cp -rf "${SCRIPT_DIR}/wallpapers/"* "${WALLPAPER_DIR}/"
+
+	if command -v wal >/dev/null 2>&1; then
+		wal -nqi "${WALLPAPER_DIR}/archkali.png" || warn "pywal failed (user)"
+		sudo -E env "PATH=${PATH}" wal -nqi "${WALLPAPER_DIR}/archkali.png" \
+			|| warn "pywal failed (root)"
+	else
+		warn "'wal' command not found, skipping color generation."
+	fi
+}
+
+# ============================================================
+# Dotfiles
+# ============================================================
+configure_dotfiles() {
+	step "Installing config files to ~/.config/..."
+	mkdir -p "${HOME}/.config"
+	cp -rf "${SCRIPT_DIR}/config/"* "${HOME}/.config/"
+
+	step "Installing .zshrc and .p10k.zsh..."
+	cp -f "${SCRIPT_DIR}/.zshrc" "${HOME}/.zshrc"
+	cp -f "${SCRIPT_DIR}/.p10k.zsh" "${HOME}/.p10k.zsh"
+
+	# Symlink to root so both users share the same source of truth
+	sudo ln -sf "${HOME}/.zshrc" /root/.zshrc
+	sudo ln -sf "${HOME}/.p10k.zsh" /root/.p10k.zsh
+}
+
+# ============================================================
+# Helper scripts + polybar HTB target (shared across themes)
+# ============================================================
+install_scripts() {
+	step "Installing helper scripts..."
+
+	sudo install -m 0755 "${SCRIPT_DIR}/scripts/whichSystem.py" \
+		/usr/local/bin/whichSystem.py
+
+	# Single source of truth for the current HTB target (theme-independent)
+	local target_file="${POLYBAR_DIR}/target"
+	mkdir -p "${POLYBAR_DIR}"
+	touch "${target_file}"
+
+	# Copy polybar shell scripts into each theme's scripts/ directory
+	# and symlink the central target file so all themes share state.
+	for theme_dir in "${POLYBAR_DIR}"/*/; do
+		local scripts_dir="${theme_dir}scripts"
+		if [[ -d "${scripts_dir}" ]]; then
+			cp -f "${SCRIPT_DIR}"/scripts/*.sh "${scripts_dir}/" 2>/dev/null || true
+			ln -sf "${target_file}" "${scripts_dir}/target"
+		fi
+	done
+
+	# Mirror the central target file for root so settarget works there too
+	sudo mkdir -p /root/.config/polybar
+	sudo ln -sf "${target_file}" /root/.config/polybar/target
+}
+
+# ============================================================
+# Permissions
+# ============================================================
+fix_permissions() {
+	step "Adjusting permissions..."
+	[[ -d "${HOME}/.config/bspwm" ]] && chmod -R +x "${HOME}/.config/bspwm/"
+	[[ -f "${POLYBAR_DIR}/launch.sh" ]] && chmod +x "${POLYBAR_DIR}/launch.sh"
+	find "${POLYBAR_DIR}" -type f -name '*.sh' -exec chmod +x {} +
+
+	# zsh completion for bspc, shipped by the bspwm package
+	if [[ -f /usr/share/zsh/vendor-completions/_bspc ]] \
+		|| [[ -f /usr/share/zsh/site-functions/_bspc ]]; then
+		info "bspc zsh completion already in place."
+	fi
+}
+
+# ============================================================
+# Cleanup hint (never auto-delete the repo we ran from)
+# ============================================================
+cleanup_hint() {
+	echo
+	info "Repo not auto-removed for safety."
+	echo -e "    To remove the cloned project, run: ${GRAY}rm -rf '${SCRIPT_DIR}'${RESET}"
+}
+
+# ============================================================
+# Reboot prompt
+# ============================================================
+prompt_reboot() {
+	while true; do
+		read -rp "$(echo -e "\n${YELLOW}[?]${RESET} Restart the system now? ([y]/n) ")" -n 1 reply
+		echo
+		reply=${reply:-y}
+		case "${reply}" in
+			[Yy]) info "Restarting..."; sleep 1; sudo reboot ;;
+			[Nn]) success "Skipping reboot. Manual reboot recommended."; exit 0 ;;
+			*)    warn "Invalid response." ;;
+		esac
+	done
+}
+
+# ============================================================
+# Main
+# ============================================================
+main() {
+	banner
+	sleep 1
+
+	preflight
+
+	info "Starting installation. This may take several minutes..."
+	install_packages
+	install_fonts
+	install_zsh_setup
+	configure_dotfiles
+	configure_wallpaper
+	install_scripts
+	fix_permissions
+
+	success "Environment configured. ✅"
+	cleanup_hint
+	prompt_reboot
+}
+
+main "$@"
