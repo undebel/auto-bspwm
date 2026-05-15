@@ -89,8 +89,13 @@ DISABLE_MAGIC_FUNCTIONS="true"
 plugins=(sudo fzf)
 
 source $ZSH/oh-my-zsh.sh
-source /usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
-source /usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh
+
+# Source zsh plugins defensively — they live in different paths across distros
+# and may not be installed when running the unattended setup the first time.
+[[ -r /usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh ]] \
+	&& source /usr/share/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh
+[[ -r /usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh ]] \
+	&& source /usr/share/zsh-autosuggestions/zsh-autosuggestions.zsh
 
 # User configuration
 
@@ -132,6 +137,8 @@ bindkey '^[[F' end-of-line                        # end
 
 # Enable completion features
 autoload -Uz compinit
+# Ensure the cache directory exists before compinit writes its dump file.
+[[ -d ~/.cache ]] || mkdir -p ~/.cache
 compinit -d ~/.cache/zcompdump
 zstyle ':completion:*' auto-description 'specify: %d'
 zstyle ':completion:*' completer _expand _complete _correct _approximate
@@ -152,8 +159,12 @@ zstyle ':completion:*:kill:*' command 'ps -u $USER -o pid,%cpu,tty,cputime,cmd'
 
 # History configurations
 HISTFILE=~/.zsh_history
-HISTSIZE=1000
-SAVEHIST=2000
+HISTSIZE=10000
+SAVEHIST=100000
+setopt HIST_IGNORE_ALL_DUPS    # don't store duplicates
+setopt HIST_IGNORE_SPACE       # commands starting with space are ignored
+setopt HIST_REDUCE_BLANKS      # collapse internal whitespace
+setopt SHARE_HISTORY           # share history across concurrent sessions
 
 # Manual aliases
 alias ll='/usr/bin/lsd -lh --group-dirs=first'
@@ -182,15 +193,16 @@ function extractPorts(){
 	cat extractPorts.tmp; rm extractPorts.tmp
 }
 
-# Settarget
+# Set the active HTB target (shown in polybar via htb_target.sh).
+# Writes to a single theme-independent file: ~/.config/polybar/target
 function settarget(){
-        if [ $# -eq 1 ]; then
-        	echo $1 > ~/.config/polybar/shapes/scripts/target
-        elif [ $# -gt 2 ]; then
-        	echo "settarget [IP] [NAME] | settarget [IP]"
-        else
-        	echo $1 $2 > ~/.config/polybar/shapes/scripts/target
-        fi
+	local target_file="$HOME/.config/polybar/target"
+	case $# in
+		1) echo "$1"       > "$target_file" ;;
+		2) echo "$1 $2"    > "$target_file" ;;
+		0) : > "$target_file" ;;
+		*) echo "usage: settarget [IP] [NAME] | settarget [IP] | settarget" >&2; return 1 ;;
+	esac
 }
 
 # fzf improvement
@@ -216,7 +228,14 @@ function fzf-lovely(){
 	fi
 }
 
+# Securely delete a file.
+# DoD-style multi-pass overwrites are counter-productive on modern SSDs/NVMe
+# (wear-leveling means you can't reach the original sectors anyway).
+# A single zero-fill pass + unlink is the NIST SP 800-88 recommendation.
 function rmk(){
-	scrub -p dod $1
-	shred -zun 10 -v $1
+	if [[ $# -lt 1 ]]; then
+		echo "usage: rmk <file>..." >&2
+		return 1
+	fi
+	shred -uz "$@"
 }

@@ -2,8 +2,11 @@
 
 pgrep -x sxhkd > /dev/null || sxhkd &
 
+# Workaround for Java GUI apps under bspwm (treats it as a non-reparenting WM)
 wmname LG3D &
-vmware-user-suid-wrapper &
+
+# Only launch the VMware guest agent when running inside a VMware VM
+command -v vmware-user-suid-wrapper >/dev/null 2>&1 && vmware-user-suid-wrapper &
 
 bspc monitor -d I II III IV V VI VII VIII IX X
 

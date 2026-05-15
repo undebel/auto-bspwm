@@ -1,42 +1,89 @@
-#!/usr/bin/python3
-#coding: utf-8
+#!/usr/bin/env python3
+"""Identify the OS of a remote host by analysing the TTL of an ICMP echo reply.
 
-import re, sys, subprocess
+Usage:
+    whichSystem.py <ip-address>
 
-# python3 wichSystem.py 10.10.10.188 
+TTL heuristic (using default OS values, before hops decrement the counter):
+    1   - 64   → Linux/Unix
+    65  - 128  → Windows
+    129 - 255  → Cisco/Solaris/other network gear
 
-if len(sys.argv) != 2:
-    print("\n[!] Uso: python3 " + sys.argv[0] + " <direccion-ip>\n")
-    sys.exit(1)
+Example:
+    $ whichSystem.py 10.10.10.5
+        10.10.10.5 (ttl -> 64): Linux
+"""
 
-def get_ttl(ip_address):
+from __future__ import annotations
 
-    proc = subprocess.Popen(["/usr/bin/ping -c 1 %s" % ip_address, ""], stdout=subprocess.PIPE, shell=True)
-    (out,err) = proc.communicate()
+import ipaddress
+import re
+import subprocess
+import sys
 
-    out = out.split()
-    out = out[12].decode('utf-8')
+PING_TIMEOUT_SECONDS = 3
+TTL_REGEX = re.compile(r"ttl[=:](\d+)", re.IGNORECASE)
 
-    ttl_value = re.findall(r"\d{1,3}", out)[0]
 
-    return ttl_value
+def validate_ip(value: str) -> str:
+    """Return the canonical IP string if valid, else raise ValueError."""
+    return str(ipaddress.ip_address(value))
 
-def get_os(ttl):
 
-    ttl = int(ttl)
+def fetch_ttl(ip: str) -> int | None:
+    """Send one ICMP echo and parse the TTL from the reply.
 
-    if ttl >= 0 and ttl <= 64:
+    Returns the TTL as an integer, or None if the host is unreachable
+    or the ping output cannot be parsed.
+    """
+    try:
+        result = subprocess.run(
+            ["/usr/bin/ping", "-c", "1", "-W", str(PING_TIMEOUT_SECONDS), ip],
+            capture_output=True,
+            text=True,
+            timeout=PING_TIMEOUT_SECONDS + 1,
+            check=False,
+        )
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        return None
+
+    if result.returncode != 0:
+        return None
+
+    match = TTL_REGEX.search(result.stdout)
+    return int(match.group(1)) if match else None
+
+
+def classify_os(ttl: int) -> str:
+    if 1 <= ttl <= 64:
         return "Linux"
-    elif ttl >= 65 and ttl <= 128:
+    if 65 <= ttl <= 128:
         return "Windows"
-    else:
-        return "Not Found"
+    if 129 <= ttl <= 255:
+        return "Cisco/Solaris"
+    return "Unknown"
 
-if __name__ == '__main__':
 
-    ip_address = sys.argv[1]
+def main() -> int:
+    if len(sys.argv) != 2:
+        print(f"\n[!] Usage: {sys.argv[0]} <ip-address>\n", file=sys.stderr)
+        return 1
 
-    ttl = get_ttl(ip_address)
+    try:
+        ip = validate_ip(sys.argv[1])
+    except ValueError:
+        print(f"\n[!] Invalid IP address: {sys.argv[1]}\n", file=sys.stderr)
+        return 1
 
-    os_name = get_os(ttl)
-    print("\n\t%s (ttl -> %s): %s" % (ip_address, ttl, os_name))
+    ttl = fetch_ttl(ip)
+    if ttl is None:
+        print(f"\n\t{ip}: host unreachable or no reply")
+        return 2
+
+    os_name = classify_os(ttl)
+    print(f"\n\t{ip} (ttl -> {ttl}): {os_name}")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
