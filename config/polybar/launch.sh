@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
 
 dir="$HOME/.config/polybar"
-themes=(`ls --hide="launch.sh" $dir`)
 
 launch_bar() {
 	# Terminate already running bar instances
