@@ -43,6 +43,7 @@ chmod +x setup.sh
 - **Polybar shows the wrong/missing icons** — the bar requires Nerd Fonts. Re-run `fc-cache -fv` and restart polybar via `~/.config/polybar/launch.sh --shapes`.
 - **Picom crashes with GLX errors inside a VM without 3D acceleration** — edit `~/.config/picom/picom.conf` and change `backend = "glx"` back to `backend = "xrender"`.
 - **`firefox-esr` / `burpsuite` not found** — these are marked optional in `setup.sh`; if your distro doesn't ship them, install your preferred alternative manually.
+- **Lock screen shows a solid black background instead of a blurred screenshot** — the capture/blur pipeline (`scrot` + `imagemagick`) failed and the wrapper fell back to a plain black `i3lock` on purpose (fail-closed: it always locks, even degraded). Check that `scrot` and `imagemagick` are installed and working.
 
 ## Overview of the environment
 ![overview1](/assets/overview1.png "overview1")
@@ -102,7 +103,7 @@ This configuration uses the following software:
 - **Hotkey**: [sxhkd](https://github.com/baskerville/sxhkd)
 - **Locker**: [i3lock](https://github.com/i3/i3lock) behind a blurred-screenshot wrapper (`scripts/lockscreen.sh`)
 - **Shell**: [zsh](https://www.zsh.org/)
-- **Shell Theme**: [powerlevel10k](https://github.com/romkatv/powerlevel10k)
+- **Shell Theme**: [powerlevel10k](https://github.com/romkatv/powerlevel10k) — upstream is in maintenance mode (works fine today); [starship](https://starship.rs/), packaged in Kali, is the designated successor if it ever breaks
 - **Shell configuration manager**: [ohmyzsh](https://github.com/ohmyzsh/ohmyzsh)
 - **Bars**: [polybar](https://github.com/polybar/polybar)
 - **Bars Theme**: [polybar-themes](https://github.com/adi1090x/polybar-themes)
