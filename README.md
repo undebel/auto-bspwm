@@ -100,7 +100,7 @@ chmod +x setup.sh
 This configuration uses the following software:
 - **WM**: [bspwm](https://github.com/baskerville/bspwm)
 - **Hotkey**: [sxhkd](https://github.com/baskerville/sxhkd)
-- **Locker**: [i3lock-fancy](https://github.com/meskarune/i3lock-fancy)
+- **Locker**: [i3lock](https://github.com/i3/i3lock) behind a blurred-screenshot wrapper (`scripts/lockscreen.sh`)
 - **Shell**: [zsh](https://www.zsh.org/)
 - **Shell Theme**: [powerlevel10k](https://github.com/romkatv/powerlevel10k)
 - **Shell configuration manager**: [ohmyzsh](https://github.com/ohmyzsh/ohmyzsh)

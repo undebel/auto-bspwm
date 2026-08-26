@@ -132,9 +132,9 @@ super + shift + f
 super + shift + b
 	/usr/bin/burpsuite
 
-# Screen Lock
+# Screen Lock (blurred-screenshot wrapper around i3lock)
 ctrl + alt + l
-	/usr/bin/i3lock-fancy	
+	/usr/local/bin/lockscreen
 
 # Increase volume
 ctrl + shift + Up

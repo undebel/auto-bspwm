@@ -96,7 +96,7 @@ readonly APT_CORE=(
 	# Terminals & shell
 	kitty zsh
 	# Launcher, file manager, wallpaper, locker, screenshot
-	rofi thunar feh i3lock-fancy scrot flameshot imagemagick
+	rofi thunar feh i3lock scrot flameshot imagemagick
 	# System info / utilities
 	fastfetch htop tty-clock cmatrix
 	# Clipboard, audio, network
@@ -241,6 +241,10 @@ install_scripts() {
 
 	sudo install -m 0755 "${SCRIPT_DIR}/scripts/whichSystem.py" \
 		/usr/local/bin/whichSystem.py
+
+	# Blurred-screenshot screen locker (replaces abandoned i3lock-fancy)
+	sudo install -m 0755 "${SCRIPT_DIR}/scripts/lockscreen.sh" \
+		/usr/local/bin/lockscreen
 
 	# Single source of truth for the current HTB target (theme-independent)
 	local target_file="${POLYBAR_DIR}/target"
