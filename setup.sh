@@ -106,7 +106,8 @@ readonly APT_CORE=(
 	# ZSH plugins (sourced by .zshrc)
 	zsh-syntax-highlighting zsh-autosuggestions
 	# Required by helper scripts / configs
-	procps wmname
+	# (wmname has no standalone package in Kali/Debian; suckless-tools provides it)
+	procps suckless-tools
 	# Python tooling for pywal16
 	python3-pip python3-venv pipx
 )
