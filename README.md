@@ -41,7 +41,7 @@ chmod +x setup.sh
 ## Troubleshooting
 - **`wal: command not found` after install** — pywal16 is installed via `pipx`. Make sure `~/.local/bin` is in your `PATH` (the installer runs `pipx ensurepath`, but you may need a fresh shell).
 - **Polybar shows the wrong/missing icons** — the bar requires Nerd Fonts. Re-run `fc-cache -fv` and restart polybar via `~/.config/polybar/launch.sh --shapes`.
-- **Picom crashes with GLX errors inside a VM without 3D acceleration** — edit `~/.config/picom/picom.conf` and change `backend = "glx"` back to `backend = "xrender"`.
+- **Windows render broken/stale, appear misplaced or don't repaint (typical inside VMware/VirtualBox)** — that's picom's `glx` backend on a virtual GPU. The config defaults to `backend = "xrender"` for this reason; if you changed it to `glx`, revert it in `~/.config/picom/picom.conf`. On bare metal with a real GPU, `glx` is fine and faster.
 - **`firefox-esr` / `burpsuite` not found** — these are marked optional in `setup.sh`; if your distro doesn't ship them, install your preferred alternative manually.
 - **Lock screen shows a solid black background instead of a blurred screenshot** — the capture/blur pipeline (`scrot` + `imagemagick`) failed and the wrapper fell back to a plain black `i3lock` on purpose (fail-closed: it always locks, even degraded). Check that `scrot` and `imagemagick` are installed and working.
 
